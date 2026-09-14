@@ -1,0 +1,13 @@
+{
+  "title": "Incident AI - Platform health",
+  "uid": "incident-ai-platform",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "API availability", "type": "stat", "gridPos": {"h": 5, "w": 8, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "incident-prometheus"}, "targets": [{"expr": "up{job=\"incident-ai\"}", "refId": "A"}]},
+    {"id": 2, "title": "Request rate", "type": "timeseries", "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5}, "datasource": {"type": "prometheus", "uid": "incident-prometheus"}, "targets": [{"expr": "sum(rate(incident_ai_http_requests_total[5m])) by (method)", "refId": "A"}]},
+    {"id": 3, "title": "P95 response time", "type": "timeseries", "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5}, "datasource": {"type": "prometheus", "uid": "incident-prometheus"}, "targets": [{"expr": "histogram_quantile(0.95, sum(rate(incident_ai_http_request_duration_seconds_bucket[5m])) by (le))", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "s"}}}
+  ]
+}

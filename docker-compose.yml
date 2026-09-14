@@ -1,0 +1,110 @@
+name: incident-ai
+services:
+  api:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    environment: &app-environment
+      DATABASE_URL: postgresql+asyncpg://incident:incident@postgres:5432/incident_ai
+      REDIS_URL: redis://redis:6379/0
+      API_KEY: ${API_KEY:-incident-ai-demo-key}
+      WEBHOOK_KEY: ${WEBHOOK_KEY:-incident-ai-demo-key}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ISSUER: ${JWT_ISSUER:-incident-ai}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-incident-ai-api}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-2097152}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      SLA_TARGET_MINUTES: ${SLA_TARGET_MINUTES:-60}
+      AUTO_ANALYZE: ${AUTO_ANALYZE:-false}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      LLM_PROVIDER: ${LLM_PROVIDER:-demo}
+      LLM_MODEL: ${LLM_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      INTEGRATION_TIMEOUT_SECONDS: ${INTEGRATION_TIMEOUT_SECONDS:-15}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-}
+      JIRA_EMAIL: ${JIRA_EMAIL:-}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+      JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-}
+      JIRA_ISSUE_TYPE: ${JIRA_ISSUE_TYPE:-Task}
+      CONFLUENCE_BASE_URL: ${CONFLUENCE_BASE_URL:-}
+      CONFLUENCE_EMAIL: ${CONFLUENCE_EMAIL:-}
+      CONFLUENCE_API_TOKEN: ${CONFLUENCE_API_TOKEN:-}
+      CONFLUENCE_SPACE_ID: ${CONFLUENCE_SPACE_ID:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-com.erykszczesniak.IncidentAI}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      AWS_REGION: ${AWS_REGION:-eu-central-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-incident-ai}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      CELERY_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: incident_ai
+      POSTGRES_USER: incident
+      POSTGRES_PASSWORD: incident
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incident -d incident_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+  worker:
+    build: .
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment: *app-environment
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker.celery_app inspect ping --timeout 5 | grep -q pong"]
+      interval: 60s
+      timeout: 15s
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles: ["observability"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-19090}:9090"]
+    volumes: ["./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    depends_on: [api]
+  grafana:
+    image: grafana/grafana:11.6.0
+    profiles: ["observability"]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-13000}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-incident-ai-local}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,39 @@
+name: Backend CI
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: incident_test
+          POSTGRES_USER: incident
+          POSTGRES_PASSWORD: incident
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U incident -d incident_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.26"
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run black --check .
+      - run: uv run mypy app
+      - run: uv run pytest
+        env:
+          TEST_POSTGRES_URL: postgresql+asyncpg://incident:incident@localhost:5432/incident_test
+      - run: uv run alembic upgrade head && uv run alembic check
+        env:
+          DATABASE_URL: postgresql+asyncpg://incident:incident@localhost:5432/incident_test
+      - run: docker build -t incident-ai:ci .

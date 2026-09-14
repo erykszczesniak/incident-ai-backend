@@ -1,0 +1,8 @@
+{
+  "AlarmName": "NotificationWorkerMemory",
+  "AlarmArn": "arn:aws:cloudwatch:eu-central-1:000000000000:alarm:NotificationWorkerMemory",
+  "NewStateValue": "ALARM",
+  "NewStateReason": "Memory utilization exceeded 90% for two periods.",
+  "StateChangeTime": "2026-09-14T14:35:00Z",
+  "Trigger": {"Namespace": "IncidentAI", "Dimensions": [{"name": "ServiceName", "value": "notification-worker"}]}
+}

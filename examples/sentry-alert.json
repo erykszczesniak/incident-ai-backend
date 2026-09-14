@@ -1,0 +1,12 @@
+{
+  "action": "created",
+  "data": {
+    "event": {
+      "event_id": "b9a4e13c203e4fd8923e",
+      "title": "DatabasePoolTimeout",
+      "message": "No connection available after 30 seconds",
+      "project": {"slug": "checkout-api"},
+      "level": "error"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "external_id": "checkout-pool-2026-09-14T14:32:00Z",
+  "title": "Checkout error rate above 5%",
+  "service": "checkout-api",
+  "severity": "critical",
+  "description": "Errors increased immediately after deployment v2.8.1.",
+  "logs": [
+    {"timestamp": "2026-09-14T14:32:00Z", "level": "INFO", "message": "deployment v2.8.1 completed"},
+    {"timestamp": "2026-09-14T14:33:00Z", "level": "ERROR", "message": "database connection pool exhausted; waiting=84"}
+  ]
+}

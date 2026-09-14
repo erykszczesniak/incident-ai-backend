@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-ai-worker
+  namespace: incident-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: incident-ai-worker}
+  template:
+    metadata:
+      labels: {app: incident-ai-worker}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: worker
+          image: incident-ai:release
+          command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "--concurrency=2", "--pidfile="]
+          envFrom:
+            - configMapRef: {name: incident-ai-config}
+            - secretRef: {name: incident-ai-secrets}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 200m, memory: 256Mi}
+            limits: {cpu: "2", memory: 1Gi}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 100Mi}}]

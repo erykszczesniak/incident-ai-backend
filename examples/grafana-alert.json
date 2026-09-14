@@ -1,0 +1,13 @@
+{
+  "receiver": "incident-ai",
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "fingerprint": "checkout-error-rate",
+      "startsAt": "2026-09-14T14:32:00Z",
+      "labels": {"alertname": "CheckoutHighErrorRate", "service": "checkout-api", "severity": "critical"},
+      "annotations": {"summary": "Checkout error rate above 5%", "description": "5xx rate was 8.2% over the last 5 minutes."}
+    }
+  ]
+}
